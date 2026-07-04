@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/css/(.*)",
+      "dest": "/css/$1"
+    },
+    {
+      "src": "/img/(.*)",
+      "dest": "/img/$1"
+    },
+    {
+      "src": "/script(.*)\\.js",
+      "dest": "/script$1.js"
+    },
+    {
+      "src": "/html/(.*)",
+      "dest": "/html/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/html/index.html"
+    },
+    {
+      "src": "/(.*)\\.html",
+      "dest": "/html/$1.html"
+    }
+  ]
+}

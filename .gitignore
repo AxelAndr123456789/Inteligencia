@@ -1,0 +1,26 @@
+# Entorno
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Archivos de texto de desarrollo
+base_completa.txt
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
