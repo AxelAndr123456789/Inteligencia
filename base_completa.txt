@@ -1,0 +1,454 @@
+-- ============================================================
+-- BASE DE DATOS: QbD FARMACIA MAGISTRAL S.A.C.
+-- Modelo Dimensional (Data Warehouse)
+-- Compatible con SQL SERVER
+-- ============================================================
+
+USE master;
+GO
+
+-- Eliminar base de datos si existe
+IF DB_ID('qbd_farmacia_magistral') IS NOT NULL
+BEGIN
+    ALTER DATABASE qbd_farmacia_magistral SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE qbd_farmacia_magistral;
+END
+GO
+
+-- Crear base de datos
+CREATE DATABASE qbd_farmacia_magistral;
+GO
+
+USE qbd_farmacia_magistral;
+GO
+
+-- ============================================================
+-- ELIMINAR TABLAS SI EXISTEN
+-- ============================================================
+IF OBJECT_ID('FACT_VentaFM', 'U') IS NOT NULL DROP TABLE FACT_VentaFM;
+IF OBJECT_ID('FACT_VentaPT', 'U') IS NOT NULL DROP TABLE FACT_VentaPT;
+IF OBJECT_ID('DIM_Medico', 'U') IS NOT NULL DROP TABLE DIM_Medico;
+IF OBJECT_ID('DIM_FormulaMagistral', 'U') IS NOT NULL DROP TABLE DIM_FormulaMagistral;
+IF OBJECT_ID('DIM_ProductoTerminado', 'U') IS NOT NULL DROP TABLE DIM_ProductoTerminado;
+IF OBJECT_ID('DIM_Cliente', 'U') IS NOT NULL DROP TABLE DIM_Cliente;
+IF OBJECT_ID('DIM_Sede', 'U') IS NOT NULL DROP TABLE DIM_Sede;
+IF OBJECT_ID('DIM_Usuario', 'U') IS NOT NULL DROP TABLE DIM_Usuario;
+IF OBJECT_ID('DIM_Tiempo_FM', 'U') IS NOT NULL DROP TABLE DIM_Tiempo_FM;
+IF OBJECT_ID('DIM_Tiempo_PT', 'U') IS NOT NULL DROP TABLE DIM_Tiempo_PT;
+GO
+
+-- ============================================================
+-- TABLAS DIMENSIONALES
+-- ============================================================
+
+-- CREDENCIALES DE USUARIO (Login)
+CREATE TABLE DIM_Usuario (
+    UsuarioKey     INT PRIMARY KEY,
+    Username       VARCHAR(50) NOT NULL UNIQUE,
+    PasswordHash   VARCHAR(255) NOT NULL,
+    Nombres        VARCHAR(100) NOT NULL,
+    Apellidos      VARCHAR(100) NOT NULL,
+    Email          VARCHAR(100),
+    Rol            VARCHAR(20) NOT NULL,
+    Activo         BIT NOT NULL DEFAULT 1
+);
+GO
+
+-- TIEMPO PARA FÓRMULAS MAGISTRALES
+CREATE TABLE DIM_Tiempo_FM (
+    FechaKey       INT PRIMARY KEY,
+    Fecha          DATE NOT NULL,
+    Anio           INT NOT NULL,
+    Trimestre      INT NOT NULL,
+    Mes            INT NOT NULL,
+    MesNombre      VARCHAR(20) NOT NULL,
+    Semana         INT NOT NULL,
+    DiaSemana      VARCHAR(15) NOT NULL,
+    EsFinDeSemana  BIT NOT NULL,
+    Periodo        VARCHAR(20) NOT NULL
+);
+GO
+
+-- TIEMPO PARA PRODUCTOS TERMINADOS
+CREATE TABLE DIM_Tiempo_PT (
+    FechaKey       INT PRIMARY KEY,
+    Fecha          DATE NOT NULL,
+    Anio           INT NOT NULL,
+    Trimestre      INT NOT NULL,
+    Mes            INT NOT NULL,
+    MesNombre      VARCHAR(20) NOT NULL,
+    Semana         INT NOT NULL,
+    DiaSemana      VARCHAR(15) NOT NULL,
+    EsFinDeSemana  BIT NOT NULL,
+    Periodo        VARCHAR(20) NOT NULL
+);
+GO
+
+-- CLIENTES
+CREATE TABLE DIM_Cliente (
+    ClienteKey      INT PRIMARY KEY,
+    DniCliente      VARCHAR(8) NOT NULL,
+    NombresC        VARCHAR(100) NOT NULL,
+    ApellidosC      VARCHAR(100) NOT NULL,
+    FechaNacimiento DATE,
+    CelularC        VARCHAR(15),
+    ApoderadoC      VARCHAR(150)
+);
+GO
+
+-- SEDES
+CREATE TABLE DIM_Sede (
+    SedeKey      INT PRIMARY KEY,
+    NombreSede   VARCHAR(100) NOT NULL,
+    Ciudad       VARCHAR(50) NOT NULL,
+    Direccion    VARCHAR(200) NOT NULL,
+    Region       VARCHAR(50) NOT NULL
+);
+GO
+
+-- MÉDICOS
+CREATE TABLE DIM_Medico (
+    MedicoKey          INT PRIMARY KEY,
+    ColegiaturaMedico  VARCHAR(20) NOT NULL,
+    NombresM           VARCHAR(100) NOT NULL,
+    ApellidosM         VARCHAR(100) NOT NULL,
+    CelularM           VARCHAR(15),
+    EstadoM            VARCHAR(20) NOT NULL
+);
+GO
+
+-- FÓRMULAS MAGISTRALES
+CREATE TABLE DIM_FormulaMagistral (
+    CodFormula       VARCHAR(20) PRIMARY KEY,
+    DescripcionFM    VARCHAR(300) NOT NULL,
+    UnidadMedidaFM   VARCHAR(30) NOT NULL,
+    CostoUnitarioFM  DECIMAL(10,2) NOT NULL,
+    EstadoFM         VARCHAR(20) NOT NULL
+);
+GO
+
+-- PRODUCTOS TERMINADOS
+CREATE TABLE DIM_ProductoTerminado (
+    CodProducto       VARCHAR(20) PRIMARY KEY,
+    DescripcionPT     VARCHAR(300) NOT NULL,
+    DescripcionUso    VARCHAR(500) NOT NULL,
+    UnidadMedidaPT    VARCHAR(30) NOT NULL,
+    CostoUnitarioPT   DECIMAL(10,2) NOT NULL,
+    StockPT           INT NOT NULL,
+    EstadoPT          VARCHAR(20) NOT NULL
+);
+GO
+
+-- ============================================================
+-- TABLAS DE HECHOS
+-- ============================================================
+
+-- VENTAS FÓRMULAS MAGISTRALES
+CREATE TABLE FACT_VentaFM (
+    CodVenta         VARCHAR(20) PRIMARY KEY,
+    CodFormula       VARCHAR(20) NOT NULL,
+    FechaKey         INT NOT NULL,
+    ClienteKey       INT NOT NULL,
+    SedeKey          INT NOT NULL,
+    MedicoKey        INT NOT NULL,
+    Medidas          VARCHAR(100),
+    Cantidad         INT NOT NULL,
+    CostoUnitarioFM  DECIMAL(10,2) NOT NULL,
+    SubTotalFM       DECIMAL(10,2) NOT NULL,
+    CONSTRAINT FK_VentaFM_Formula  FOREIGN KEY (CodFormula)  REFERENCES DIM_FormulaMagistral(CodFormula),
+    CONSTRAINT FK_VentaFM_Tiempo   FOREIGN KEY (FechaKey)    REFERENCES DIM_Tiempo_FM(FechaKey),
+    CONSTRAINT FK_VentaFM_Cliente  FOREIGN KEY (ClienteKey)  REFERENCES DIM_Cliente(ClienteKey),
+    CONSTRAINT FK_VentaFM_Sede     FOREIGN KEY (SedeKey)     REFERENCES DIM_Sede(SedeKey),
+    CONSTRAINT FK_VentaFM_Medico   FOREIGN KEY (MedicoKey)   REFERENCES DIM_Medico(MedicoKey)
+);
+GO
+
+-- VENTAS PRODUCTOS TERMINADOS
+CREATE TABLE FACT_VentaPT (
+    CodVenta          VARCHAR(20) PRIMARY KEY,
+    CodProducto       VARCHAR(20) NOT NULL,
+    FechaKey          INT NOT NULL,
+    ClienteKey        INT NOT NULL,
+    SedeKey           INT NOT NULL,
+    Medidas           VARCHAR(100),
+    Cantidad          INT NOT NULL,
+    CostoUnitarioPT   DECIMAL(10,2) NOT NULL,
+    SubTotalPT        DECIMAL(10,2) NOT NULL,
+    StockDespues      INT NOT NULL,
+    CONSTRAINT FK_VentaPT_Producto FOREIGN KEY (CodProducto) REFERENCES DIM_ProductoTerminado(CodProducto),
+    CONSTRAINT FK_VentaPT_Tiempo   FOREIGN KEY (FechaKey)    REFERENCES DIM_Tiempo_PT(FechaKey),
+    CONSTRAINT FK_VentaPT_Cliente  FOREIGN KEY (ClienteKey)  REFERENCES DIM_Cliente(ClienteKey),
+    CONSTRAINT FK_VentaPT_Sede     FOREIGN KEY (SedeKey)     REFERENCES DIM_Sede(SedeKey)
+);
+GO
+
+-- ============================================================
+-- INSERTAR DATOS
+-- ============================================================
+
+-- CREDENCIALES DE USUARIO (Login) - 20 usuarios
+INSERT INTO DIM_Usuario VALUES
+(1,  'admin',       'admin123',     'Administrador',  'General',     'admin@qbd.com',       'Admin',    1),
+(2,  'qbd',         'qbd2024',      'QbD',            'Farmacia',    'qbd@qbd.com',         'Admin',    1),
+(3,  'farmacia',    'farmacia123',  'Farmacia',       'Magistral',   'farmacia@qbd.com',    'Usuario',  1),
+(4,  'carlos',      'carlos123',    'Carlos',         'Huanca',      'carlos@qbd.com',      'Usuario',  1),
+(5,  'maria',       'maria123',     'Maria',          'Quispe',      'maria@qbd.com',       'Usuario',  1),
+(6,  'jorge',       'jorge123',     'Jorge',          'Condori',     'jorge@qbd.com',       'Usuario',  1),
+(7,  'ana',         'ana123',       'Ana',            'Flores',      'ana@qbd.com',         'Usuario',  1),
+(8,  'pedro',       'pedro123',     'Pedro',          'Mamani',      'pedro@qbd.com',       'Usuario',  1),
+(9,  'lucia',       'lucia123',     'Lucia',          'Torres',      'lucia@qbd.com',       'Usuario',  1),
+(10, 'roberto',     'roberto123',   'Roberto',        'Gutierrez',   'roberto@qbd.com',     'Usuario',  1),
+(11, 'patricia',    'patricia123',  'Patricia',       'Sandoval',    'patricia@qbd.com',    'Usuario',  1),
+(12, 'fernando',    'fernando123',  'Fernando',       'Aliaga',      'fernando@qbd.com',    'Usuario',  1),
+(13, 'claudia',     'claudia123',   'Claudia',        'Rivera',      'claudia@qbd.com',     'Usuario',  1),
+(14, 'miguel',      'miguel123',    'Miguel',         'Torres',      'miguel@qbd.com',      'Usuario',  1),
+(15, 'rosa',        'rosa123',      'Rosa',           'Condori',     'rosa@qbd.com',        'Usuario',  1),
+(16, 'luis',        'luis123',      'Luis',           'Mamani',      'luis@qbd.com',        'Usuario',  1),
+(17, 'sofia',       'sofia123',     'Sofia',          'Huanca',      'sofia@qbd.com',       'Usuario',  1),
+(18, 'diego',       'diego123',     'Diego',          'Garcia',      'diego@qbd.com',       'Usuario',  1),
+(19, 'carmen',      'carmen123',    'Carmen',         'Luna',        'carmen@qbd.com',      'Usuario',  1),
+(20, 'jose',        'jose123',      'Jose',           'Aliaga',      'jose@qbd.com',        'Usuario',  1);
+GO
+
+-- FECHAS PARA FM - 20 fechas (2 por mes)
+INSERT INTO DIM_Tiempo_FM VALUES
+(20260105, '2026-01-05', 2026, 1, 1, 'Enero', 1, 'Lunes', 0, '2026-Q1'),
+(20260120, '2026-01-20', 2026, 1, 1, 'Enero', 4, 'Martes', 0, '2026-Q1'),
+(20260205, '2026-02-05', 2026, 1, 2, 'Febrero', 6, 'Miercoles', 0, '2026-Q1'),
+(20260220, '2026-02-20', 2026, 1, 2, 'Febrero', 8, 'Jueves', 0, '2026-Q1'),
+(20260305, '2026-03-05', 2026, 1, 3, 'Marzo', 10, 'Jueves', 0, '2026-Q1'),
+(20260320, '2026-03-20', 2026, 1, 3, 'Marzo', 12, 'Viernes', 0, '2026-Q1'),
+(20260405, '2026-04-05', 2026, 2, 4, 'Abril', 14, 'Domingo', 1, '2026-Q2'),
+(20260420, '2026-04-20', 2026, 2, 4, 'Abril', 16, 'Lunes', 0, '2026-Q2'),
+(20260505, '2026-05-05', 2026, 2, 5, 'Mayo', 19, 'Martes', 0, '2026-Q2'),
+(20260520, '2026-05-20', 2026, 2, 5, 'Mayo', 21, 'Miercoles', 0, '2026-Q2'),
+(20260605, '2026-06-05', 2026, 2, 6, 'Junio', 23, 'Jueves', 0, '2026-Q2'),
+(20260620, '2026-06-20', 2026, 2, 6, 'Junio', 25, 'Viernes', 0, '2026-Q2'),
+(20260705, '2026-07-05', 2026, 3, 7, 'Julio', 27, 'Domingo', 1, '2026-Q3'),
+(20260720, '2026-07-20', 2026, 3, 7, 'Julio', 29, 'Lunes', 0, '2026-Q3'),
+(20260805, '2026-08-05', 2026, 3, 8, 'Agosto', 31, 'Miercoles', 0, '2026-Q3'),
+(20260820, '2026-08-20', 2026, 3, 8, 'Agosto', 33, 'Jueves', 0, '2026-Q3'),
+(20260905, '2026-09-05', 2026, 3, 9, 'Septiembre', 36, 'Viernes', 0, '2026-Q3'),
+(20260920, '2026-09-20', 2026, 3, 9, 'Septiembre', 38, 'Sabado', 1, '2026-Q3'),
+(20261005, '2026-10-05', 2026, 4, 10, 'Octubre', 40, 'Lunes', 0, '2026-Q4'),
+(20261020, '2026-10-20', 2026, 4, 10, 'Octubre', 42, 'Martes', 0, '2026-Q4');
+GO
+
+-- FECHAS PARA PT - 20 fechas (2 por mes)
+INSERT INTO DIM_Tiempo_PT VALUES
+(20260105, '2026-01-05', 2026, 1, 1, 'Enero', 1, 'Lunes', 0, '2026-Q1'),
+(20260120, '2026-01-20', 2026, 1, 1, 'Enero', 4, 'Martes', 0, '2026-Q1'),
+(20260205, '2026-02-05', 2026, 1, 2, 'Febrero', 6, 'Miercoles', 0, '2026-Q1'),
+(20260220, '2026-02-20', 2026, 1, 2, 'Febrero', 8, 'Jueves', 0, '2026-Q1'),
+(20260305, '2026-03-05', 2026, 1, 3, 'Marzo', 10, 'Jueves', 0, '2026-Q1'),
+(20260320, '2026-03-20', 2026, 1, 3, 'Marzo', 12, 'Viernes', 0, '2026-Q1'),
+(20260405, '2026-04-05', 2026, 2, 4, 'Abril', 14, 'Domingo', 1, '2026-Q2'),
+(20260420, '2026-04-20', 2026, 2, 4, 'Abril', 16, 'Lunes', 0, '2026-Q2'),
+(20260505, '2026-05-05', 2026, 2, 5, 'Mayo', 19, 'Martes', 0, '2026-Q2'),
+(20260520, '2026-05-20', 2026, 2, 5, 'Mayo', 21, 'Miercoles', 0, '2026-Q2'),
+(20260605, '2026-06-05', 2026, 2, 6, 'Junio', 23, 'Jueves', 0, '2026-Q2'),
+(20260620, '2026-06-20', 2026, 2, 6, 'Junio', 25, 'Viernes', 0, '2026-Q2'),
+(20260705, '2026-07-05', 2026, 3, 7, 'Julio', 27, 'Domingo', 1, '2026-Q3'),
+(20260720, '2026-07-20', 2026, 3, 7, 'Julio', 29, 'Lunes', 0, '2026-Q3'),
+(20260805, '2026-08-05', 2026, 3, 8, 'Agosto', 31, 'Miercoles', 0, '2026-Q3'),
+(20260820, '2026-08-20', 2026, 3, 8, 'Agosto', 33, 'Jueves', 0, '2026-Q3'),
+(20260905, '2026-09-05', 2026, 3, 9, 'Septiembre', 36, 'Viernes', 0, '2026-Q3'),
+(20260920, '2026-09-20', 2026, 3, 9, 'Septiembre', 38, 'Sabado', 1, '2026-Q3'),
+(20261005, '2026-10-05', 2026, 4, 10, 'Octubre', 40, 'Lunes', 0, '2026-Q4'),
+(20261020, '2026-10-20', 2026, 4, 10, 'Octubre', 42, 'Martes', 0, '2026-Q4');
+GO
+
+-- CLIENTES - 20 clientes
+INSERT INTO DIM_Cliente VALUES
+(1,  '70123456', 'Maria Elena',    'Quispe Mamani',   '1985-03-12', '951234567', NULL),
+(2,  '70234567', 'Carlos Alberto', 'Huanca Torres',   '1990-07-25', '952345678', NULL),
+(3,  '70345678', 'Ana Lucia',      'Flores Garcia',   '1978-11-03', '953456789', 'Pedro Flores'),
+(4,  '70456789', 'Luis Fernando',  'Mamani Condori',  '1995-01-18', '954567890', NULL),
+(5,  '70567890', 'Rosa Mercedes',  'Condori Huaman',  '1982-09-30', '955678901', 'Jorge Condori'),
+(6,  '70678901', 'Jorge Luis',     'Aliaga Sandoval', '1988-05-15', '956789012', NULL),
+(7,  '70789012', 'Claudia Patric', 'Rivera Luna',     '1992-12-08', '957890123', NULL),
+(8,  '70890123', 'Pedro Antonio',  'Mamani Garcia',   '1975-06-22', '958901234', 'Ana Mamani'),
+(9,  '70901234', 'Sofia Elena',    'Torres Quispe',   '1998-02-14', '959012345', NULL),
+(10, '71012345', 'Diego Martin',   'Gutierrez Flores', '1980-08-30', '960123456', NULL),
+(11, '71123456', 'Carmen Rosa',    'Luna Huanca',     '1987-04-17', '961234567', 'Luis Luna'),
+(12, '71234567', 'Jose Carlos',    'Aliaga Mamani',   '1993-10-05', '962345678', NULL),
+(13, '71345678', 'Lucia Fernanda', 'Sandoval Torres', '1979-07-28', '963456789', NULL),
+(14, '71456789', 'Roberto Carlos', 'Gutierrez Quispe', '1984-01-12', '964567890', 'Maria Gutierrez'),
+(15, '71567890', 'Patricia Ivy',   'Sandoval Condori', '1991-11-25', '965678901', NULL),
+(16, '71678901', 'Fernando Jose',  'Aliaga Rivera',   '1976-03-09', '966789012', NULL),
+(17, '71789012', 'Claudia Irene',  'Rivera Mamani',   '1994-09-18', '967890123', 'Pedro Rivera'),
+(18, '71890123', 'Miguel Angel',   'Torres Garcia',   '1981-05-03', '968901234', NULL),
+(19, '71901234', 'Rosa Maria',     'Condori Luna',    '1989-12-20', '969012345', NULL),
+(20, '72012345', 'Luis Enrique',   'Mamani Sandoval', '1996-08-07', '970123456', 'Ana Mamani');
+GO
+
+-- SEDES - 20 sedes
+INSERT INTO DIM_Sede VALUES
+(1,  'QbD Juliaca - Sede Central',  'Juliaca',  'Av. Industrial 1250, Zona Industrial',     'Puno'),
+(2,  'QbD Puno - Centro',           'Puno',     'Jr. Lima 456, Cercado',                    'Puno'),
+(3,  'QbD Juliaca - San Carlos',    'Juliaca',  'Av. San Carlos 890, San Carlos',           'Puno'),
+(4,  'QbD Puno - La Torre',         'Puno',     'Av. La Torre 123, Frecuencia',             'Puno'),
+(5,  'QbD Juliaca - Frecuencia',    'Juliaca',  'Calle Frecuencia 567, Pocollay',           'Puno'),
+(6,  'QbD Puno - San Martin',       'Puno',     'Av. San Martin 789, Frecuencia',           'Puno'),
+(7,  'QbD Juliaca - Azangaro',      'Juliaca',  'Av. Azangaro 321, Azangaro',              'Puno'),
+(8,  'QbD Puno - Jr. Deustua',      'Puno',     'Jr. Deustua 654, Cercado',                'Puno'),
+(9,  'QbD Juliaca - Miraflores',    'Juliaca',  'Av. Miraflores 987, Miraflores',          'Puno'),
+(10, 'QbD Puno - Los Incas',        'Puno',     'Av. Los Incas 147, Frecuencia',           'Puno'),
+(11, 'QbD Juliaca - Huancane',      'Juliaca',  'Calle Huancane 258, Pocollay',            'Puno'),
+(12, 'QbD Puno - Copacabana',       'Puno',     'Av. Copacabana 369, Cercado',             'Puno'),
+(13, 'QbD Juliaca - Yunguyo',       'Juliaca',  'Av. Yunguyo 471, San Carlos',             'Puno'),
+(14, 'QbD Puno - Tiahuanaco',       'Puno',     'Jr. Tiahuanaco 582, Frecuencia',          'Puno'),
+(15, 'QbD Juliaca - Desaguadero',   'Juliaca',  'Av. Desaguadero 693, Zona Industrial',    'Puno'),
+(16, 'QbD Puno - Pomata',           'Puno',     'Calle Pomata 814, Cercado',               'Puno'),
+(17, 'QbD Juliaca - Chucuito',      'Juliaca',  'Av. Chucuito 925, Pocollay',              'Puno'),
+(18, 'QbD Puno - Lampa',            'Puno',     'Jr. Lampa 136, Frecuencia',               'Puno'),
+(19, 'QbD Juliaca - Juli',          'Juliaca',  'Av. Juli 247, San Carlos',                'Puno'),
+(20, 'QbD Puno - Melgar',           'Puno',     'Av. Melgar 358, Cercado',                 'Puno');
+GO
+
+-- MÉDICOS - 20 médicos
+INSERT INTO DIM_Medico VALUES
+(1,  'CMP-10001', 'Roberto',  'Gutierrez Paredes',  '951111111', 'Activo'),
+(2,  'CMP-10002', 'Patricia', 'Sandoval Luna',      '952222222', 'Activo'),
+(3,  'CMP-10003', 'Fernando', 'Aliaga Mamani',      '953333333', 'Activo'),
+(4,  'CMP-10004', 'Claudia',  'Rivera Huanca',      '954444444', 'Activo'),
+(5,  'CMP-10005', 'Miguel',   'Torres Quispe',      '955555555', 'Inactivo'),
+(6,  'CMP-10006', 'Carlos',   'Flores Garcia',      '956666666', 'Activo'),
+(7,  'CMP-10007', 'Ana',      'Mamani Condori',     '957777777', 'Activo'),
+(8,  'CMP-10008', 'Jorge',    'Condori Huaman',     '958888888', 'Activo'),
+(9,  'CMP-10009', 'Rosa',     'Huanca Torres',      '959999999', 'Inactivo'),
+(10, 'CMP-10010', 'Luis',     'Sandoval Luna',      '960000000', 'Activo'),
+(11, 'CMP-10011', 'Pedro',    'Aliaga Mamani',      '961111111', 'Activo'),
+(12, 'CMP-10012', 'Lucia',    'Rivera Huanca',      '962222222', 'Activo'),
+(13, 'CMP-10013', 'Diego',    'Torres Quispe',      '963333333', 'Activo'),
+(14, 'CMP-10014', 'Sofia',    'Gutierrez Paredes',  '964444444', 'Inactivo'),
+(15, 'CMP-10015', 'Carmen',   'Flores Garcia',      '965555555', 'Activo'),
+(16, 'CMP-10016', 'Jose',     'Mamani Condori',     '966666666', 'Activo'),
+(17, 'CMP-10017', 'Claudia',  'Condori Huaman',     '967777777', 'Activo'),
+(18, 'CMP-10018', 'Fernando', 'Huanca Torres',      '968888888', 'Activo'),
+(19, 'CMP-10019', 'Roberto',  'Sandoval Luna',      '969999999', 'Inactivo'),
+(20, 'CMP-10020', 'Patricia', 'Aliaga Mamani',      '970000000', 'Activo');
+GO
+
+-- FÓRMULAS MAGISTRALES - 20 fórmulas
+INSERT INTO DIM_FormulaMagistral VALUES
+('FM-001', 'Crema dermatologica con acido hialuronico 1%',     'Tubo 50g',     45.00, 'Activo'),
+('FM-002', 'Suspension oral de amoxicilina 250mg/5ml',         'Frasco 100ml', 32.50, 'Activo'),
+('FM-003', 'Jarabe para la tos con dextrometorfano',           'Frasco 120ml', 28.00, 'Activo'),
+('FM-004', 'Crema antimicosis con clotrimazol 1%',              'Tubo 30g',     35.75, 'Activo'),
+('FM-005', 'Solucion topica de minoxidil 5%',                  'Frasco 60ml',  62.00, 'Activo'),
+('FM-006', 'Crema cicatrizante con centella asiatica 5%',       'Tubo 40g',     38.50, 'Activo'),
+('FM-007', 'Solucion oral de vitaminas del grupo B',            'Frasco 150ml', 25.00, 'Activo'),
+('FM-008', 'Crema hidratante con urea 10%',                    'Tubo 60g',     30.25, 'Activo'),
+('FM-009', 'Gel antiseptico con clorhexidina 0.5%',            'Frasco 100ml', 22.00, 'Activo'),
+('FM-010', 'Suspension de hidroxido de aluminio y magnesio',   'Frasco 200ml', 27.50, 'Activo'),
+('FM-011', 'Crema dermoprotectora con lanolina 15%',           'Tubo 50g',     33.00, 'Activo'),
+('FM-012', 'Solucion nasal con suero fisiologico',             'Frasco 120ml', 18.50, 'Activo'),
+('FM-013', 'Crema analgesica con diclofenaco 1%',              'Tubo 40g',     42.00, 'Activo'),
+('FM-014', 'Suspension antiacida con carbonato de calcio',     'Frasco 150ml', 29.00, 'Activo'),
+('FM-015', 'Solucion auricular con antibiotico',               'Frasco 10ml',  35.00, 'Activo'),
+('FM-016', 'Crema depilatoria con tioglicolato',               'Tubo 100g',    28.75, 'Activo'),
+('FM-017', 'Gel conductor para ultrasonido',                   'Frasco 250ml', 20.00, 'Activo'),
+('FM-018', 'Crema reparadora con pantenol 5%',                 'Tubo 50g',     36.50, 'Activo'),
+('FM-019', 'Solucion desinfectante con peroxido de hidrogeno', 'Frasco 100ml', 15.00, 'Activo'),
+('FM-020', 'Crema antiinflamatoria con ibuprofeno 5%',         'Tubo 30g',     48.00, 'Activo');
+GO
+
+-- PRODUCTOS TERMINADOS - 20 productos
+INSERT INTO DIM_ProductoTerminado VALUES
+('PT-001', 'Paracetamol 500mg - Tabletas x 20',     'Analgesico y antipiretico. Alivia dolores leves a moderados como dolor de cabeza, muelas, espalda y fiebre.',                                    'Caja x 20',  8.50, 150, 'Activo'),
+('PT-002', 'Ibuprofeno 400mg - Capsulas x 10',      'Antiinflamatorio no esteroideo. Reduce inflamacion, dolor y fiebre. Indicado para artritis, dolores musculares y colicos.',                         'Caja x 10', 12.00, 200, 'Activo'),
+('PT-003', 'Omeprazol 20mg - Capsulas x 14',        'Inhibidor de bomba de protones. Reduce la acidez estomacal. Trata gastritis, reflujo gastroesofagico y ulceras.',                                  'Caja x 14', 18.75, 120, 'Activo'),
+('PT-004', 'Amoxicilina 500mg - Capsulas x 21',     'Antibiotico de amplio espectro. Trata infecciones bacterianas como amigdalitis, neumonia, infecciones urinarias y de la piel.',                    'Caja x 21', 25.00,  80, 'Activo'),
+('PT-005', 'Loratadina 10mg - Tabletas x 10',       'Antihistaminico. Alivia sintomas de alergia como estornudos, picazon, rinitis alergica y urticaria.',                                             'Caja x 10', 15.50,  95, 'Activo'),
+('PT-006', 'Naproxeno 500mg - Tabletas x 10',       'Antiinflamatorio. Trata dolor menstrual, artritis, tendinitis y bursitis. Reduce inflamacion y fiebre.',                                         'Caja x 10', 14.00, 110, 'Activo'),
+('PT-007', 'Diclofenaco 50mg - Capsulas x 20',      'Antiinflamatorio potente. Indicado para dolores articulares, musculares, postoperatorios y colicos renales.',                                     'Caja x 20', 16.50,  85, 'Activo'),
+('PT-008', 'Ranitidina 150mg - Tabletas x 20',      'Bloqueador H2. Reduce la acidez gastrica. Trata ulceras estomacales y esofago de Barrett.',                                                        'Caja x 20', 11.00, 130, 'Activo'),
+('PT-009', 'Metformina 850mg - Tabletas x 30',      'Antidiabetico oral. Controla el nivel de azucar en sangre. Indicado para diabetes tipo 2.',                                                        'Caja x 30', 22.00,  70, 'Activo'),
+('PT-010', 'Enalapril 10mg - Tabletas x 20',        'Antihipertensivo. Reduce la presion arterial. Previene accidentes cardiovasculares.',                                                            'Caja x 20', 19.50,  90, 'Activo'),
+('PT-011', 'Atorvastatina 20mg - Tabletas x 10',    'Hipolipemiante. Reduce el colesterol LDL y trigliceridos. Previene enfermedades cardiovasculares.',                                               'Caja x 10', 28.00,  60, 'Activo'),
+('PT-012', 'Salbutamol 100mcg - Spray 200 dosis',   'Broncodilatador. Alivia broncoespasmo en asma y EPOC. Facilita la respiracion.',                                                                 'Spray',     45.00,  40, 'Activo'),
+('PT-013', 'Prednisona 20mg - Tabletas x 20',       'Corticosteroide. Trata inflamaciones severas, enfermedades autoinmunes y alergias.',                                                            'Caja x 20', 17.00,  75, 'Activo'),
+('PT-014', 'Fluoxetina 20mg - Capsulas x 30',       'Antidepresivo ISRS. Trata depresion, ansiedad y trastorno obsesivo-compulsivo.',                                                                'Caja x 30', 35.00,  50, 'Activo'),
+('PT-015', 'Azitromicina 500mg - Tabletas x 3',     'Antibiotico macrolido. Trata infecciones respiratorias, otitis y enfermedades de transmision sexual.',                                              'Caja x 3',  32.00,  65, 'Activo'),
+('PT-016', 'Ciprofloxacino 500mg - Tabletas x 10',  'Antibiotico fluoroquinolona. Trata infecciones urinarias, respiratorias y gastrointestinales.',                                                    'Caja x 10', 20.00,  55, 'Activo'),
+('PT-017', 'Losartan 50mg - Tabletas x 30',         'Antihipertensivo ARA II. Reduce la presion arterial y protege los riñones.',                                                                   'Caja x 30', 24.00,  80, 'Activo'),
+('PT-018', 'Warfarina 5mg - Tabletas x 30',         'Anticoagulante. Previene la formacion de coagulos sanguineos en trombosis venosa.',                                                             'Caja x 30', 30.00,  35, 'Activo'),
+('PT-019', 'Insulina NPH 100UI/ml - Vial 10ml',     'Insulina de accion intermedia. Controla la diabetes tipo 1 y tipo 2 con requerimiento de insulina.',                                             'Vial',      85.00,  25, 'Activo'),
+('PT-020', 'Diclofenaco 1% - Gel 60g',              'Antiinflamatorio topico. Trata dolor muscular, articular y contusiones. Absorcion cutanea rapida.',                                               'Tubo 60g',  22.50, 100, 'Activo');
+GO
+
+-- ============================================================
+-- VENTAS FÓRMULAS MAGISTRALES (20 ventas)
+-- ============================================================
+INSERT INTO FACT_VentaFM VALUES
+('VFM-001', 'FM-001', 20260105, 1, 1, 1, '50g',    2, 45.00,  90.00),
+('VFM-002', 'FM-002', 20260120, 2, 2, 2, '100ml',  1, 32.50,  32.50),
+('VFM-003', 'FM-003', 20260205, 3, 3, 3, '120ml',  3, 28.00,  84.00),
+('VFM-004', 'FM-004', 20260220, 4, 4, 4, '30g',    1, 35.75,  35.75),
+('VFM-005', 'FM-005', 20260305, 5, 5, 1, '60ml',   2, 62.00, 124.00),
+('VFM-006', 'FM-006', 20260320, 6, 1, 2, '40g',    1, 38.50,  38.50),
+('VFM-007', 'FM-007', 20260405, 7, 2, 3, '150ml',  2, 25.00,  50.00),
+('VFM-008', 'FM-008', 20260420, 8, 3, 4, '60g',    3, 30.25,  90.75),
+('VFM-009', 'FM-009', 20260505, 9, 4, 1, '100ml',  1, 22.00,  22.00),
+('VFM-010', 'FM-010', 20260520, 10, 5, 2, '200ml', 2, 27.50,  55.00),
+('VFM-011', 'FM-011', 20260605, 11, 1, 3, '50g',    1, 33.00,  33.00),
+('VFM-012', 'FM-012', 20260620, 12, 2, 4, '120ml',  3, 18.50,  55.50),
+('VFM-013', 'FM-013', 20260705, 13, 3, 1, '40g',    2, 42.00,  84.00),
+('VFM-014', 'FM-014', 20260720, 14, 4, 2, '150ml',  1, 29.00,  29.00),
+('VFM-015', 'FM-015', 20260805, 15, 5, 3, '10ml',   2, 35.00,  70.00),
+('VFM-016', 'FM-016', 20260820, 16, 1, 4, '100g',   1, 28.75,  28.75),
+('VFM-017', 'FM-017', 20260905, 17, 2, 1, '250ml',  3, 20.00,  60.00),
+('VFM-018', 'FM-018', 20260920, 18, 3, 2, '50g',    2, 36.50,  73.00),
+('VFM-019', 'FM-019', 20261005, 19, 4, 3, '100ml',  1, 15.00,  15.00),
+('VFM-020', 'FM-020', 20261020, 20, 5, 4, '30g',    2, 48.00,  96.00);
+GO
+
+-- ============================================================
+-- VENTAS PRODUCTOS TERMINADOS (20 ventas)
+-- ============================================================
+INSERT INTO FACT_VentaPT VALUES
+('VPT-001', 'PT-001', 20260105, 1, 1, 'Tabletas',  3,  8.50,  25.50, 147),
+('VPT-002', 'PT-002', 20260120, 2, 2, 'Capsulas',  2, 12.00,  24.00, 198),
+('VPT-003', 'PT-003', 20260205, 3, 3, 'Capsulas',  1, 18.75,  18.75, 119),
+('VPT-004', 'PT-004', 20260220, 4, 4, 'Capsulas',  4, 25.00, 100.00,  76),
+('VPT-005', 'PT-005', 20260305, 5, 5, 'Tabletas',  2, 15.50,  31.00,  93),
+('VPT-006', 'PT-006', 20260320, 6, 1, 'Tabletas',  3, 14.00,  42.00, 107),
+('VPT-007', 'PT-007', 20260405, 7, 2, 'Capsulas',  2, 16.50,  33.00,  83),
+('VPT-008', 'PT-008', 20260420, 8, 3, 'Tabletas',  5, 11.00,  55.00, 125),
+('VPT-009', 'PT-009', 20260505, 9, 4, 'Tabletas',  2, 22.00,  44.00,  68),
+('VPT-010', 'PT-010', 20260520, 10, 5, 'Tabletas',  3, 19.50,  58.50,  87),
+('VPT-011', 'PT-011', 20260605, 11, 1, 'Tabletas',  1, 28.00,  28.00,  59),
+('VPT-012', 'PT-012', 20260620, 12, 2, 'Spray',     2, 45.00,  90.00,  38),
+('VPT-013', 'PT-013', 20260705, 13, 3, 'Tabletas',  4, 17.00,  68.00,  71),
+('VPT-014', 'PT-014', 20260720, 14, 4, 'Capsulas',  1, 35.00,  35.00,  49),
+('VPT-015', 'PT-015', 20260805, 15, 5, 'Tabletas',  2, 32.00,  64.00,  63),
+('VPT-016', 'PT-016', 20260820, 16, 1, 'Tabletas',  3, 20.00,  60.00,  52),
+('VPT-017', 'PT-017', 20260905, 17, 2, 'Tabletas',  1, 24.00,  24.00,  79),
+('VPT-018', 'PT-018', 20260920, 18, 3, 'Tabletas',  2, 30.00,  60.00,  33),
+('VPT-019', 'PT-019', 20261005, 19, 4, 'Vial',      1, 85.00,  85.00,  24),
+('VPT-020', 'PT-020', 20261020, 20, 5, 'Tubo 60g',  3, 22.50,  67.50,  97);
+GO
+
+-- ============================================================
+-- VERIFICACION
+-- ============================================================
+PRINT '=========================================='
+PRINT 'BASE DE DATOS CREADA EXITOSAMENTE'
+PRINT '=========================================='
+PRINT ''
+PRINT 'RESUMEN DE TABLAS (20 registros cada una):'
+PRINT '- DIM_Usuario: 20 usuarios (credenciales login)'
+PRINT '- DIM_Tiempo_FM: 20 fechas'
+PRINT '- DIM_Tiempo_PT: 20 fechas'
+PRINT '- DIM_Cliente: 20 clientes'
+PRINT '- DIM_Sede: 20 sedes'
+PRINT '- DIM_Medico: 20 medicos'
+PRINT '- DIM_FormulaMagistral: 20 formulas'
+PRINT '- DIM_ProductoTerminado: 20 productos'
+PRINT '- FACT_VentaFM: 20 ventas FM'
+PRINT '- FACT_VentaPT: 20 ventas PT'
+PRINT ''
+PRINT 'TOTAL: 40 ventas en el ano 2026'
+PRINT '=========================================='
+GO

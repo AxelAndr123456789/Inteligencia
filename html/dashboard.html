@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QbD - Dashboard Administrativo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="../img/logo.png" alt="QbD" class="sidebar-logo">
+      <h2>QbD Admin</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#resumen" class="nav-item active" data-section="resumen">
+        <span class="nav-icon">&#9632;</span> Resumen General
+      </a>
+      <a href="#ventas" class="nav-item" data-section="ventas">
+        <span class="nav-icon">&#9650;</span> Ventas por Mes
+      </a>
+      <a href="#sedes" class="nav-item" data-section="sedes">
+        <span class="nav-icon">&#9679;</span> Ventas por Sede
+      </a>
+      <a href="#productos" class="nav-item" data-section="productos">
+        <span class="nav-icon">&#9733;</span> Productos
+      </a>
+      <a href="#clientes" class="nav-item" data-section="clientes">
+        <span class="nav-icon">&#9787;</span> Clientes
+      </a>
+      <a href="#prediccion" class="nav-item" data-section="prediccion">
+        <span class="nav-icon">&#9830;</span> Predicción 2025
+      </a>
+      <a href="#crud" class="nav-item" data-section="crud">
+        <span class="nav-icon">&#9998;</span> Gestionar Datos
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button id="btnLogout" class="btn-logout">Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="main-content">
+    <header class="top-bar">
+      <button class="menu-toggle" id="menuToggle">&#9776;</button>
+      <h1>Dashboard Administrativo</h1>
+      <span class="fecha-actual" id="fechaActual"></span>
+    </header>
+
+    <!-- SECCIÓN: RESUMEN -->
+    <section class="section active" id="resumen">
+      <h2>Resumen General</h2>
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-ingresos">
+          <div class="kpi-icon">&#8369;</div>
+          <div class="kpi-info">
+            <h3 id="kpiIngresos">Cargando...</h3>
+            <p>Ingresos Totales</p>
+          </div>
+        </div>
+        <div class="kpi-card kpi-fm">
+          <div class="kpi-icon">&#9878;</div>
+          <div class="kpi-info">
+            <h3 id="kpiFM">Cargando...</h3>
+            <p>Fórmulas Magistrales</p>
+          </div>
+        </div>
+        <div class="kpi-card kpi-pt">
+          <div class="kpi-icon">&#9883;</div>
+          <div class="kpi-info">
+            <h3 id="kpiPT">Cargando...</h3>
+            <p>Productos Terminados</p>
+          </div>
+        </div>
+        <div class="kpi-card kpi-ventas">
+          <div class="kpi-icon">&#128200;</div>
+          <div class="kpi-info">
+            <h3 id="kpiStock">Cargando...</h3>
+            <p>Stock Total</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-grid kpi-4col">
+        <div class="kpi-card-mini">
+          <p class="kpi-mini-label">Productos</p>
+          <p class="kpi-mini-value" id="kpiCountProd">-</p>
+        </div>
+        <div class="kpi-card-mini">
+          <p class="kpi-mini-label">Fórmulas</p>
+          <p class="kpi-mini-value" id="kpiCountForm">-</p>
+        </div>
+        <div class="kpi-card-mini">
+          <p class="kpi-mini-label">Clientes</p>
+          <p class="kpi-mini-value" id="kpiCountCli">-</p>
+        </div>
+        <div class="kpi-card-mini">
+          <p class="kpi-mini-label">Médicos</p>
+          <p class="kpi-mini-value" id="kpiCountMed">-</p>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Participación de Ingresos</h3>
+          <canvas id="chartParticipacion"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Ventas por Sede</h3>
+          <canvas id="chartSedeResumen"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: VENTAS POR MES -->
+    <section class="section" id="ventas">
+      <h2>Evolución Mensual de Ventas</h2>
+      <div class="chart-card full-width">
+        <canvas id="chartVentasMensuales"></canvas>
+      </div>
+      <div class="info-box">
+        <p><strong>Tendencia:</strong> Las ventas muestran un crecimiento sostenido. Las FM representan el 65-67% de ingresos todos los meses. Se observa una caída en abril y aceleración en noviembre-diciembre.</p>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: VENTAS POR SEDE -->
+    <section class="section" id="sedes">
+      <h2>Ventas por Sede</h2>
+      <div class="chart-card full-width">
+        <h3>Distribución de Ventas por Sede</h3>
+        <canvas id="chartSedes"></canvas>
+      </div>
+      <div class="info-box sedes-info-box">
+        <div class="sede-stat">
+          <span class="sede-dot" style="background:#06b6d4;"></span>
+          <strong>Juliaca:</strong>&nbsp;<span id="kpiSedeJuliaca">S/ 43,693</span>&nbsp;
+          <span style="color:var(--gray);">— 59.9% del total</span>
+        </div>
+        <div class="sede-stat">
+          <span class="sede-dot" style="background:#f43f5e;"></span>
+          <strong>Puno:</strong>&nbsp;<span id="kpiSedePuno">S/ 29,234</span>&nbsp;
+          <span style="color:var(--gray);">— 40.1% del total</span>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SECCIÓN: PRODUCTOS -->
+    <section class="section" id="productos">
+      <h2>Análisis de Productos</h2>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Top Productos más Vendidos</h3>
+          <canvas id="chartTopProductos"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Ventas por Tipo de Producto</h3>
+          <canvas id="chartTipoProducto"></canvas>
+        </div>
+      </div>
+      <div class="info-box">
+        <p><strong>Fórmulas Magistrales:</strong> Representan el 55% de los ingresos totales. Mayores márgenes de ganancia.</p>
+        <p><strong>Productos Terminados:</strong> Representan el 45% de los ingresos. Mayor volumen de ventas.</p>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: CLIENTES -->
+    <section class="section" id="clientes">
+      <h2>Segmentación de Clientes</h2>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Clientes por Tipo de Compra</h3>
+          <canvas id="chartClientesTipo"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Compras por Cliente</h3>
+          <canvas id="chartClientesCompras"></canvas>
+        </div>
+      </div>
+      <div class="segment-grid" id="segmentGrid">
+        <div class="segment-card segment-premium">
+          <h3 id="seg0Name">-</h3>
+          <p class="segment-count" id="seg0Count">Cargando...</p>
+          <p><strong id="seg0Gasto">-</strong></p>
+          <p class="segment-action" id="seg0Accion">-</p>
+        </div>
+        <div class="segment-card segment-ocasional">
+          <h3 id="seg1Name">-</h3>
+          <p class="segment-count" id="seg1Count">Cargando...</p>
+          <p><strong id="seg1Gasto">-</strong></p>
+          <p class="segment-action" id="seg1Accion">-</p>
+        </div>
+        <div class="segment-card segment-masivo">
+          <h3 id="seg2Name">-</h3>
+          <p class="segment-count" id="seg2Count">Cargando...</p>
+          <p><strong id="seg2Gasto">-</strong></p>
+          <p class="segment-action" id="seg2Accion">-</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: PREDICCIÓN -->
+    <section class="section" id="prediccion">
+      <h2>Predicción de Ventas 2026</h2>
+      <div class="chart-card full-width">
+        <canvas id="chartPrediccion"></canvas>
+      </div>
+      <div class="kpi-grid kpi-3col">
+        <div class="kpi-card kpi-ene">
+          <div class="kpi-info">
+            <h3>S/ 11,495</h3>
+            <p>Enero 2026 (Proyectado)</p>
+          </div>
+        </div>
+        <div class="kpi-card kpi-feb">
+          <div class="kpi-info">
+            <h3>S/ 11,922</h3>
+            <p>Febrero 2026 (Proyectado)</p>
+          </div>
+        </div>
+        <div class="kpi-card kpi-mar">
+          <div class="kpi-info">
+            <h3>S/ 12,348</h3>
+            <p>Marzo 2026 (Proyectado)</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-box">
+        <p><strong>Tendencia:</strong> Las ventas crecen S/ 426 cada mes. Si se mantiene, QbD superaría S/ 140,000 anuales en 2026.</p>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: CRUD -->
+    <section class="section scrollable" id="crud">
+      <h2>Gestionar Datos</h2>
+      
+      <!-- Tabs CRUD -->
+      <div class="crud-tabs">
+        <button class="crud-tab active" data-tab="tabla-productos">Productos</button>
+        <button class="crud-tab" data-tab="tabla-formulas">Fórmulas</button>
+        <button class="crud-tab" data-tab="tabla-clientes">Clientes</button>
+        <button class="crud-tab" data-tab="tabla-medicos">Médicos</button>
+        <button class="crud-tab" data-tab="tabla-sedes">Sedes</button>
+        <button class="crud-tab" data-tab="tabla-ventas">Ventas</button>
+      </div>
+
+      <!-- Tabla Productos -->
+      <div class="crud-table-container active" id="tabla-productos">
+        <div class="crud-header">
+          <h3>Productos Terminados</h3>
+          <button class="btn-nuevo" onclick="abrirModal('producto')">+ Nuevo Producto</button>
+        </div>
+        <table class="crud-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Descripción</th>
+              <th>Uso</th>
+              <th>Unidad</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyProductos"></tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Fórmulas -->
+      <div class="crud-table-container" id="tabla-formulas">
+        <div class="crud-header">
+          <h3>Fórmulas Magistrales</h3>
+          <button class="btn-nuevo" onclick="abrirModal('formula')">+ Nueva Fórmula</button>
+        </div>
+        <table class="crud-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Descripción</th>
+              <th>Unidad</th>
+              <th>Precio</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyFormulas"></tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Clientes -->
+      <div class="crud-table-container" id="tabla-clientes">
+        <div class="crud-header">
+          <h3>Clientes</h3>
+          <button class="btn-nuevo" onclick="abrirModal('cliente')">+ Nuevo Cliente</button>
+        </div>
+        <table class="crud-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>DNI</th>
+              <th>Nombres</th>
+              <th>Apellidos</th>
+              <th>Celular</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyClientes"></tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Médicos -->
+      <div class="crud-table-container" id="tabla-medicos">
+        <div class="crud-header">
+          <h3>Médicos</h3>
+          <button class="btn-nuevo" onclick="abrirModal('medico')">+ Nuevo Médico</button>
+        </div>
+        <table class="crud-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Colegiatura</th>
+              <th>Nombres</th>
+              <th>Apellidos</th>
+              <th>Celular</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyMedicos"></tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Sedes -->
+      <div class="crud-table-container" id="tabla-sedes">
+        <div class="crud-header">
+          <h3>Sedes</h3>
+          <button class="btn-nuevo" onclick="abrirModal('sede')">+ Nueva Sede</button>
+        </div>
+        <table class="crud-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Nombre</th>
+              <th>Ciudad</th>
+              <th>Dirección</th>
+              <th>Región</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodySedes"></tbody>
+        </table>
+      </div>
+
+      <!-- Tabla Ventas -->
+      <div class="crud-table-container" id="tabla-ventas">
+        <div class="crud-header">
+          <h3>Ventas Registradas</h3>
+          <button class="btn-nuevo" onclick="abrirModal('venta')">+ Nueva Venta</button>
+        </div>
+        <table class="crud-table">
+          <thead>
+            <tr>
+              <th>Codigo</th>
+              <th>Tipo</th>
+              <th>Producto</th>
+              <th>Cliente</th>
+              <th>Sede</th>
+              <th>Cantidad</th>
+              <th>SubTotal</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyVentas"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modalTitulo">Nuevo Registro</h3>
+          <button class="modal-close" onclick="cerrarModal()">&times;</button>
+        </div>
+        <form id="modalForm" class="modal-form"></form>
+      </div>
+    </div>
+  </main>
+
+  <script src="../script_dashboard.js"></script>
+</body>
+</html>

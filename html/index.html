@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QbD Farmacia Magistral S.A.C.</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/home.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">
+        <img src="../img/logo.png" alt="QbD Farmacia" class="logo-img">
+        <span class="logo-text">QbD <span class="logo-highlight">Farmacia</span></span>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Menú">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html" class="active">Inicio</a></li>
+        <li><a href="nosotros.html">Nosotros</a></li>
+        <li><a href="productos.html">Productos</a></li>
+        <li><a href="servicios.html">Servicios</a></li>
+        <li><a href="compromiso.html">Compromiso</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="contacto.html">Contacto</a></li>
+        <li><a href="login.html" class="nav-btn-login">Iniciar Sesión</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero" id="inicio">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <p class="hero-subtitle">Farmacia Magistral</p>
+      <h1>QbD Farmacia Magistral S.A.C.</h1>
+      <p class="hero-text">Soluciones farmacéuticas personalizadas bajo estándares de calidad, seguridad y responsabilidad profesional.</p>
+      <div class="hero-buttons">
+        <a href="nosotros.html" class="btn btn-primary">Conócenos</a>
+        <a href="contacto.html" class="btn btn-secondary">Contáctanos</a>
+      </div>
+    </div>
+    <div class="hero-scroll">
+      <span>&#x2193;</span>
+    </div>
+  </section>
+
+  <section class="section section-welcome" id="bienvenida">
+    <div class="container">
+      <div class="welcome-grid">
+        <div class="welcome-text">
+          <span class="section-tag">Bienvenidos</span>
+          <h2>Soluciones personalizadas para tu salud</h2>
+          <p>QbD Farmacia Magistral S.A.C. es una empresa farmacéutica peruana especializada en la elaboración de fórmulas magistrales y la comercialización de productos farmacéuticos de alta calidad.</p>
+          <p>Nuestro equipo está conformado por profesionales capacitados que garantizan una atención personalizada y una adecuada orientación en cada tratamiento.</p>
+        </div>
+        <div class="welcome-cards">
+          <div class="stat-card">
+            <span class="stat-icon">&#x1F3E5;</span>
+            <h3>Fórmulas Magistrales</h3>
+            <p>Preparación personalizada según prescripción médica</p>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#x1F48A;</span>
+            <h3>Productos Terminados</h3>
+            <p>Productos farmacéuticos de calidad garantizada</p>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#x1F9D1;&#x200D;&#x2695;&#xFE0F;</span>
+            <h3>Personal Capacitado</h3>
+            <p>Profesionales comprometidos con tu bienestar</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <img src="../img/logo.png" alt="QbD Farmacia" class="logo-img footer-logo-img">
+          <span class="logo-text">QbD <span class="logo-highlight">Farmacia</span></span>
+          <p>Soluciones farmacéuticas personalizadas</p>
+        </div>
+        <div class="footer-links">
+          <h4>Navegación</h4>
+          <a href="index.html">Inicio</a>
+          <a href="nosotros.html">Nosotros</a>
+          <a href="productos.html">Productos</a>
+          <a href="servicios.html">Servicios</a>
+          <a href="faq.html">FAQ</a>
+          <a href="contacto.html">Contacto</a>
+        </div>
+        <div class="footer-contact">
+          <h4>Contacto</h4>
+          <p>QbD Farmacia Magistral S.A.C.</p>
+          <p>Sedes: Juliaca y Puno</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 QbD Farmacia Magistral S.A.C. Todos los derechos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div class="chatbot-container" id="chatbotContainer">
+    <div class="chatbot-window" id="chatbotWindow">
+      <div class="chatbot-header">
+        <div class="chatbot-robot-mini">
+          <img src="../img/chatbot.png" alt="QbD Bot" width="36" height="36">
+        </div>
+        <div class="chatbot-header-text">
+          <h4>QbD Bot</h4>
+          <span class="chatbot-status">En línea</span>
+        </div>
+        <button class="chatbot-close" id="chatbotClose">&times;</button>
+      </div>
+      <div class="chatbot-messages" id="chatbotMessages"></div>
+      <div class="chatbot-input-area">
+        <input type="text" id="chatbotInput" placeholder="Escribe tu mensaje..." autocomplete="off">
+        <button class="chatbot-send" id="chatbotSend">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="chatbot-fab" id="chatbotFab">
+      <img src="../img/chatbot.png" alt="QbD Bot" class="robot-fab">
+    </div>
+  </div>
+
+  <script src="../script.js"></script>
+</body>
+</html>

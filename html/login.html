@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QbD - Login Administrador</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/login.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="../img/logo.png" alt="QbD Logo" class="login-logo">
+        <h1>Panel Administrativo</h1>
+        <p>QbD Farmacia Magistral S.A.C.</p>
+      </div>
+      <form id="loginForm">
+        <div class="input-group">
+          <label for="usuario">Usuario</label>
+          <input type="text" id="usuario" placeholder="Ingrese su usuario" required>
+        </div>
+        <div class="input-group">
+          <label for="contrasena">Contraseña</label>
+          <input type="password" id="contrasena" placeholder="Ingrese su contraseña" required>
+        </div>
+        <div id="error_msg" class="error-msg"></div>
+        <button type="submit" class="btn-login">Ingresar</button>
+      </form>
+      <a href="../html/index.html" class="btn-volver">Volver al sitio web</a>
+    </div>
+  </div>
+  <script src="../script_login.js"></script>
+</body>
+</html>

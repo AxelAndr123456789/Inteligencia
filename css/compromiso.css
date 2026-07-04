@@ -1,0 +1,28 @@
+/* ===== COMMITMENT ===== */
+.section-commitment {
+  background: linear-gradient(160deg, #0f2d6e 0%, #1e40af 40%, #1a5c3a 100%);
+  color: var(--white);
+  text-align: center;
+}
+
+.commitment-content { max-width: 750px; margin: 0 auto; }
+
+.section-commitment .section-tag { background: rgba(255,255,255,0.2); color: var(--white); }
+.section-commitment h2 { color: var(--white); }
+
+.commitment-text { color: rgba(255,255,255,0.85); font-size: 1rem; margin-bottom: 18px; }
+
+.commitment-icons {
+  display: flex;
+  justify-content: center;
+  gap: 36px;
+  margin-top: 36px;
+  flex-wrap: wrap;
+}
+
+.c-icon span { font-size: 2.2rem; display: block; margin-bottom: 6px; }
+.c-icon p { font-weight: 500; font-size: 0.88rem; }
+
+@media (max-width: 768px) {
+  .commitment-icons { gap: 24px; }
+}
