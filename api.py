@@ -15,7 +15,8 @@ os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 import random
 import pyodbc
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer, util
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
 
@@ -74,14 +75,22 @@ def expandir_consulta(consulta):
 
 # --- Conexión BD ---
 def get_db():
-    cadena = (
-        f"DRIVER={{{os.getenv('DB_DRIVER')}}};"
-        f"SERVER={os.getenv('DB_SERVIDOR')};"
-        f"DATABASE={os.getenv('DB_BASE')};"
-        f"UID={os.getenv('DB_USUARIO')};"
-        f"PWD={os.getenv('DB_CONTRASENA')};"
-    )
-    return pyodbc.connect(cadena)
+    try:
+        cadena = (
+            f"DRIVER={{{os.getenv('DB_DRIVER', 'ODBC Driver 17 for SQL Server')}}};"
+            f"SERVER={os.getenv('DB_SERVIDOR', '.\\SQLEXPRESS')};"
+            f"DATABASE={os.getenv('DB_BASE', 'qbd_farmacia_magistral')};"
+            f"UID={os.getenv('DB_USUARIO', 'sa')};"
+            f"PWD={os.getenv('DB_CONTRASENA', '123')};"
+        )
+        return pyodbc.connect(cadena, timeout=5)
+    except Exception as e:
+        print(f"[ERROR] No se pudo conectar a la BD: {e}")
+        return None
+
+def require_db():
+    """Retorna conexión o None. Los endpoints deben verificar."""
+    return get_db()
 
 def consultar(conn, sql):
     cursor = conn.cursor()
@@ -134,11 +143,21 @@ def cargar_conocimiento():
     return documentos
 
 # --- Modelo ML ---
-print("[ML] Cargando modelo chatbot...")
-modelo_ml = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-documentos = cargar_conocimiento()
+print("[ML] Cargando modelo chatbot (TF-IDF para ahorrar memoria)...")
+modelo_ml = TfidfVectorizer()
+try:
+    documentos = cargar_conocimiento()
+except Exception as e:
+    print(f"[WARN] No se pudo cargar conocimiento de BD: {e}")
+    documentos = [
+        {"id": "GEN-001", "categoria": "General", "titulo": "QbD Farmacia", "descripcion": "QbD Farmacia Magistral S.A.C. es una empresa farmacéutica peruana dedicada a fórmulas magistrales y productos farmacéuticos. Inició en septiembre 2021 en Juliaca y Puno."},
+        {"id": "GEN-002", "categoria": "General", "titulo": "Misión", "descripcion": "Brindar soluciones farmacéuticas personalizadas con calidad, responsabilidad y compromiso."},
+        {"id": "GEN-003", "categoria": "General", "titulo": "Fórmula magistral", "descripcion": "Fórmula magistral es un medicamento elaborado para un paciente según prescripción médica."},
+        {"id": "GEN-004", "categoria": "General", "titulo": "Servicios", "descripcion": "Servicios: fórmulas magistrales, productos farmacéuticos, atención personalizada, orientación y seguimiento."},
+        {"id": "GEN-005", "categoria": "General", "titulo": "Horarios", "descripcion": "Atención de lunes a sábado en sedes de Juliaca y Puno."},
+    ]
 textos = [f"{d['titulo']}. {d['descripcion']}" for d in documentos]
-embeddings = modelo_ml.encode(textos, convert_to_tensor=True)
+embeddings = modelo_ml.fit_transform(textos)
 print(f"[ML] Modelo chatbot listo. {len(documentos)} documentos indexados.")
 
 # --- Modelo ML 2: Segmentacion de Clientes (K-Means) ---
@@ -150,6 +169,8 @@ import numpy as np
 def obtener_datos_clientes():
     """Obtiene datos de clientes para el modelo K-Means desde la BD."""
     conn = get_db()
+    if not conn:
+        return []
     
     sql = """
     SELECT 
@@ -237,16 +258,18 @@ def recomendar_por_sintomas(consulta):
 
 def buscar(consulta, top_k=3):
     expandida = expandir_consulta(consulta)
-    emb = modelo_ml.encode(expandida, convert_to_tensor=True)
-    sims = util.cos_sim(emb, embeddings)[0]
-    top_idx = sims.argsort(descending=True)[:top_k]
-    return [{**documentos[i.item()], "similitud": round(sims[i.item()].item(), 4)} for i in top_idx]
+    emb = modelo_ml.transform([expandida])
+    sims = cosine_similarity(emb, embeddings)[0]
+    top_idx = sims.argsort()[::-1][:top_k]
+    return [{**documentos[i], "similitud": round(float(sims[i]), 4)} for i in top_idx]
 
 import random
 
 def buscar_respuesta_especifica(consulta):
     """Busca respuestas específicas como dirección de una sede, precio de un producto, etc."""
     conn = get_db()
+    if not conn:
+        return None
     consulta_lower = consulta.lower()
     respuesta = None
 
@@ -294,6 +317,8 @@ def buscar_respuesta_especifica(consulta):
 def buscar_info_tabla(consulta):
     """Cuando mencionan una tabla, busca toda su información."""
     conn = get_db()
+    if not conn:
+        return None
     consulta_lower = consulta.lower()
     resultados_tabla = []
 
@@ -412,12 +437,11 @@ def buscar_info_tabla(consulta):
     return None
 
 def detectar_intencion(consulta):
-    """Analiza la intención de la pregunta usando el modelo ML."""
+    """Analiza la intención de la pregunta usando el modelo ML (TF-IDF)."""
     consulta_lower = consulta.lower()
+    emb_consulta = modelo_ml.transform([consulta])
 
     # PASO 1: Verificar si es una pregunta que NO podemos responder
-    emb_consulta = modelo_ml.encode(consulta, convert_to_tensor=True)
-
     preguntas_no_respondables = [
         "cuántos pacientes han sido atendidos",
         "cuantos pacientes han sido atendidos",
@@ -439,9 +463,9 @@ def detectar_intencion(consulta):
     ]
 
     for pregunta in preguntas_no_respondables:
-        emb_no = modelo_ml.encode(pregunta, convert_to_tensor=True)
-        sim = util.cos_sim(emb_consulta, emb_no)[0].item()
-        if sim > 0.5:
+        emb_no = modelo_ml.transform([pregunta])
+        sim = cosine_similarity(emb_consulta, emb_no)[0][0]
+        if sim > 0.4:
             return "no_respondable"
 
     # PASO 2: Detectar intención positiva
@@ -458,13 +482,13 @@ def detectar_intencion(consulta):
     mejor_similitud = 0
 
     for intencion, texto in textos_intencion.items():
-        emb_intencion = modelo_ml.encode(texto, convert_to_tensor=True)
-        sim = util.cos_sim(emb_consulta, emb_intencion)[0].item()
+        emb_intencion = modelo_ml.transform([texto])
+        sim = cosine_similarity(emb_consulta, emb_intencion)[0][0]
         if sim > mejor_similitud:
             mejor_similitud = sim
             mejor_intencion = intencion
 
-    if mejor_similitud > 0.4:
+    if mejor_similitud > 0.15: # Umbral más bajo para TF-IDF
         return mejor_intencion
 
     return None
@@ -618,6 +642,8 @@ def login():
         return jsonify({"exito": False, "mensaje": "Usuario y contraseña son requeridos"})
     
     conn = get_db()
+    if not conn:
+        return jsonify({"exito": False, "mensaje": "Base de datos no disponible"})
     cursor = conn.cursor()
     cursor.execute(
         "SELECT Username, Nombres, Apellidos, Rol, PasswordHash FROM DIM_Usuario WHERE Username = ? AND Activo = 1",
@@ -665,6 +691,8 @@ def recomendar():
 @app.route('/api/productos', methods=['GET'])
 def obtener_productos():
     conn = get_db()
+    if not conn:
+        return jsonify([])
     productos = consultar(conn, "SELECT * FROM DIM_ProductoTerminado")
     conn.close()
     return jsonify(productos)
@@ -673,6 +701,8 @@ def obtener_productos():
 def crear_producto():
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO DIM_ProductoTerminado (CodProducto, DescripcionPT, DescripcionUso, UnidadMedidaPT, CostoUnitarioPT, StockPT, EstadoPT) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -686,6 +716,8 @@ def crear_producto():
 def actualizar_producto(cod):
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE DIM_ProductoTerminado SET DescripcionPT=?, DescripcionUso=?, UnidadMedidaPT=?, CostoUnitarioPT=?, StockPT=?, EstadoPT=? WHERE CodProducto=?",
@@ -698,6 +730,8 @@ def actualizar_producto(cod):
 @app.route('/api/productos/<cod>', methods=['DELETE'])
 def eliminar_producto(cod):
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute("DELETE FROM DIM_ProductoTerminado WHERE CodProducto=?", (cod,))
     conn.commit()
@@ -708,6 +742,8 @@ def eliminar_producto(cod):
 @app.route('/api/formulas', methods=['GET'])
 def obtener_formulas():
     conn = get_db()
+    if not conn:
+        return jsonify([])
     formulas = consultar(conn, "SELECT * FROM DIM_FormulaMagistral")
     conn.close()
     return jsonify(formulas)
@@ -716,6 +752,8 @@ def obtener_formulas():
 def crear_formula():
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO DIM_FormulaMagistral (CodFormula, DescripcionFM, UnidadMedidaFM, CostoUnitarioFM, EstadoFM) VALUES (?, ?, ?, ?, ?)",
@@ -729,6 +767,8 @@ def crear_formula():
 def actualizar_formula(cod):
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE DIM_FormulaMagistral SET DescripcionFM=?, UnidadMedidaFM=?, CostoUnitarioFM=?, EstadoFM=? WHERE CodFormula=?",
@@ -741,6 +781,8 @@ def actualizar_formula(cod):
 @app.route('/api/formulas/<cod>', methods=['DELETE'])
 def eliminar_formula(cod):
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute("DELETE FROM DIM_FormulaMagistral WHERE CodFormula=?", (cod,))
     conn.commit()
@@ -751,6 +793,8 @@ def eliminar_formula(cod):
 @app.route('/api/clientes', methods=['GET'])
 def obtener_clientes():
     conn = get_db()
+    if not conn:
+        return jsonify([])
     clientes = consultar(conn, "SELECT * FROM DIM_Cliente")
     conn.close()
     return jsonify(clientes)
@@ -774,6 +818,8 @@ def segmentacion_clientes():
 def crear_cliente():
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO DIM_Cliente (ClienteKey, DniCliente, NombresC, ApellidosC, FechaNacimiento, CelularC, ApoderadoC) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -787,6 +833,8 @@ def crear_cliente():
 def actualizar_cliente(key):
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE DIM_Cliente SET DniCliente=?, NombresC=?, ApellidosC=?, FechaNacimiento=?, CelularC=?, ApoderadoC=? WHERE ClienteKey=?",
@@ -799,6 +847,8 @@ def actualizar_cliente(key):
 @app.route('/api/clientes/<key>', methods=['DELETE'])
 def eliminar_cliente(key):
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute("DELETE FROM DIM_Cliente WHERE ClienteKey=?", (key,))
     conn.commit()
@@ -809,6 +859,8 @@ def eliminar_cliente(key):
 @app.route('/api/medicos', methods=['GET'])
 def obtener_medicos():
     conn = get_db()
+    if not conn:
+        return jsonify([])
     medicos = consultar(conn, "SELECT * FROM DIM_Medico")
     conn.close()
     return jsonify(medicos)
@@ -817,6 +869,8 @@ def obtener_medicos():
 def crear_medico():
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO DIM_Medico (MedicoKey, ColegiaturaMedico, NombresM, ApellidosM, CelularM, EstadoM) VALUES (?, ?, ?, ?, ?, ?)",
@@ -830,6 +884,8 @@ def crear_medico():
 def actualizar_medico(key):
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE DIM_Medico SET ColegiaturaMedico=?, NombresM=?, ApellidosM=?, CelularM=?, EstadoM=? WHERE MedicoKey=?",
@@ -842,6 +898,8 @@ def actualizar_medico(key):
 @app.route('/api/medicos/<key>', methods=['DELETE'])
 def eliminar_medico(key):
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute("DELETE FROM DIM_Medico WHERE MedicoKey=?", (key,))
     conn.commit()
@@ -852,6 +910,8 @@ def eliminar_medico(key):
 @app.route('/api/sedes', methods=['GET'])
 def obtener_sedes():
     conn = get_db()
+    if not conn:
+        return jsonify([])
     sedes = consultar(conn, "SELECT * FROM DIM_Sede")
     conn.close()
     return jsonify(sedes)
@@ -860,6 +920,8 @@ def obtener_sedes():
 def crear_sede():
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO DIM_Sede (SedeKey, NombreSede, Ciudad, Direccion, Region) VALUES (?, ?, ?, ?, ?)",
@@ -873,6 +935,8 @@ def crear_sede():
 def actualizar_sede(key):
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE DIM_Sede SET NombreSede=?, Ciudad=?, Direccion=?, Region=? WHERE SedeKey=?",
@@ -885,6 +949,8 @@ def actualizar_sede(key):
 @app.route('/api/sedes/<key>', methods=['DELETE'])
 def eliminar_sede(key):
     conn = get_db()
+    if not conn:
+        return jsonify({"mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     cursor.execute("DELETE FROM DIM_Sede WHERE SedeKey=?", (key,))
     conn.commit()
@@ -895,6 +961,8 @@ def eliminar_sede(key):
 @app.route('/api/ventas', methods=['GET'])
 def obtener_ventas():
     conn = get_db()
+    if not conn:
+        return jsonify([])
     sql_fm = """
         SELECT v.CodVenta, v.CodFormula AS Codigo, f.DescripcionFM AS Producto, 
                c.NombresC + ' ' + c.ApellidosC AS Cliente, s.NombreSede AS Sede,
@@ -921,6 +989,8 @@ def obtener_ventas():
 @app.route('/api/ventas/dropdowns', methods=['GET'])
 def ventas_dropdowns():
     conn = get_db()
+    if not conn:
+        return jsonify({})
     formulas = consultar(conn, "SELECT CodFormula, DescripcionFM, CostoUnitarioFM FROM DIM_FormulaMagistral WHERE EstadoFM='Activo'")
     productos = consultar(conn, "SELECT CodProducto, DescripcionPT, CostoUnitarioPT FROM DIM_ProductoTerminado WHERE EstadoPT='Activo'")
     clientes = consultar(conn, "SELECT ClienteKey, NombresC + ' ' + ApellidosC AS Nombre FROM DIM_Cliente")
@@ -943,6 +1013,8 @@ def ventas_dropdowns():
 def crear_venta():
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"exito": False, "mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     tipo = data.get('tipo', 'FM')
     try:
@@ -971,6 +1043,8 @@ def crear_venta():
 def editar_venta(cod, tipo):
     data = request.json
     conn = get_db()
+    if not conn:
+        return jsonify({"exito": False, "mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     try:
         if tipo == 'FM':
@@ -997,6 +1071,8 @@ def editar_venta(cod, tipo):
 @app.route('/api/ventas/<cod>/<tipo>', methods=['DELETE'])
 def eliminar_venta(cod, tipo):
     conn = get_db()
+    if not conn:
+        return jsonify({"exito": False, "mensaje": "Base de datos no disponible"}), 503
     cursor = conn.cursor()
     try:
         if tipo == 'FM':
@@ -1014,6 +1090,8 @@ def eliminar_venta(cod, tipo):
 @app.route('/api/metricas', methods=['GET'])
 def obtener_metricas():
     conn = get_db()
+    if not conn:
+        return jsonify({})
     cursor = conn.cursor()
     
     # Totales de ventas
