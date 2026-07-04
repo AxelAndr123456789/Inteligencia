@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ===== CHATBOT CON API ML =====
-  const API_URL = 'http://localhost:5000/api/chat';
-  const API_REC_URL = 'http://localhost:5000/api/recomendar';
+  const API_URL = 'https://inteligencia.onrender.com/api/chat';
+  const API_REC_URL = 'https://inteligencia.onrender.com/api/recomendar';
   const fab = document.getElementById('chatbotFab');
   const win = document.getElementById('chatbotWindow');
   const closeBtn = document.getElementById('chatbotClose');

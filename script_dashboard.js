@@ -3,7 +3,7 @@ if (!sessionStorage.getItem('qbd_admin')) {
   window.location.href = 'login.html';
 }
 
-const API = 'http://localhost:5000';
+const API = 'https://inteligencia.onrender.com';
 
 // Fecha actual
 const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];

@@ -10,7 +10,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
   btn.textContent = 'Ingresando...';
   btn.disabled = true;
 
-  fetch('http://localhost:5000/api/login', {
+  fetch('https://inteligencia.onrender.com/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ usuario: usuario, contrasena: contrasena })
