@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
     msgs.appendChild(typing);
     setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 50);
 
-    const respuesta = await enviarMensaje(text);
+    const respuesta = await enviarAMl(text);
     
     typing.remove();
     
