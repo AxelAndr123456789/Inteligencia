@@ -75,6 +75,10 @@ def expandir_consulta(consulta):
 
 # --- Conexión BD ---
 def get_db():
+    if os.getenv("RENDER"):
+        print("[WARN] Ejecutando en Render. Saltando conexión a BD local.")
+        return None
+        
     try:
         cadena = (
             f"DRIVER={{{os.getenv('DB_DRIVER', 'ODBC Driver 17 for SQL Server')}}};"
@@ -83,7 +87,7 @@ def get_db():
             f"UID={os.getenv('DB_USUARIO', 'sa')};"
             f"PWD={os.getenv('DB_CONTRASENA', '123')};"
         )
-        return pyodbc.connect(cadena, timeout=5)
+        return pyodbc.connect(cadena, timeout=2)
     except Exception as e:
         print(f"[ERROR] No se pudo conectar a la BD: {e}")
         return None
